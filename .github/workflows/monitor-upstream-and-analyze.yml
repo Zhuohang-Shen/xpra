@@ -246,7 +246,7 @@ jobs:
               
               artifact_names=$(echo "$response" | jq -r '.artifacts[].name')
               
-              if echo "$artifact_names" | grep -q "^${artifact}$"; then
+              if echo "$artifact_names" | grep -q "^${artifact}"; then
                 artifact_exists=true
                 break
               fi
