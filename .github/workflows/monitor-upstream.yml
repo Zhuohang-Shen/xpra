@@ -24,11 +24,10 @@ jobs:
 
     env:
       # NEED TO BE CONFIGURED EACH PROJECT
-      UPSTREAM_REPO: "Xpra-org/xpra"
-      BRANCH: "master"
+      UPSTREAM_REPO: "databricks/databricks-ai-bridge"
+      BRANCH: "main"
       RUNNER_DISPATCH_TIMEOUT: 7200 # 2 hours
-      FILTER_DISPATCH_TIMEOUT: 1800 # 30 minutes
-      MAX_CONCURRENT: 8
+      MAX_CONCURRENT: 2
 
     steps:
       # --------------------------------------------------------------------
@@ -165,6 +164,7 @@ jobs:
                 --repo "${GITHUB_REPOSITORY}" \
                 --ref "${BRANCH}" \
                 --field commit="$commit" \
+                --field dispatch_type="history" \
                 --field dispatch_id="$dispatch_id"
 
               dispatched_commits+=("$commit")
@@ -211,7 +211,7 @@ jobs:
       - name: Create release and upload artifacts
         id: make-release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.ORG_WIDE_TOKEN }}
         run: |
           set -euo pipefail
 
