@@ -41,6 +41,11 @@ PER_SUBSURFACE_EVENTS: Final[Sequence[str]] = (
 
 
 class WaylandWindowServer(WindowServer):
+    # The client's map packet carries the backing-specific encoding properties
+    # and requests the first refresh after applying them.
+    SEND_INITIAL_DAMAGE = False
+    WAIT_FOR_INITIAL_WINDOW_SIZE = True
+
     __slots__ = (
         "focused", "pending_popups", "pointer_focus", "subsurface_facades", "subsurface_info",
         "toplevel_wid",

@@ -38,6 +38,8 @@ class WindowServer(StubSubsystem):
         "window_filters", "window_max_size", "window_min_size",
     )
     PREFIX = "window"
+    SEND_INITIAL_DAMAGE = True
+    WAIT_FOR_INITIAL_WINDOW_SIZE = False
 
     def __init__(self, server=None):
         StubSubsystem.__init__(self, server)
@@ -634,13 +636,17 @@ class WindowServer(StubSubsystem):
                     window.move_resize(-200, -200, w, h)
             else:
                 # code more or less duplicated from _send_new_window_packet:
+                x, y, w, h = window.get_property("geometry")
+                if self.WAIT_FOR_INITIAL_WINDOW_SIZE and (w <= 0 or h <= 0):
+                    log("not sending initial window %#x with invalid dimensions %ix%i", wid, w, h)
+                    continue
                 if not sharing and not window.is_OR():
                     window.hide()
-                x, y, w, h = window.get_property("geometry")
                 wprops = self.client_properties.get(wid, {}).get(ss.uuid, {})
                 packet_type = "new-override-redirect" if (window.is_OR() and BACKWARDS_COMPATIBLE) else WINDOW_CREATE
                 ss.new_window(packet_type, wid, window, x, y, w, h, wprops)
-                ss.damage(wid, window, 0, 0, w, h)
+                if self.SEND_INITIAL_DAMAGE:
+                    ss.damage(wid, window, 0, 0, w, h)
 
     ######################################################################
     # focus:
