@@ -185,6 +185,8 @@ class WindowVideoSource(WindowSource):
 
     def __init__(self, *args):
         self.supports_scrolling: bool = False
+        self._csc_encoder: ColorspaceConverter | None = None
+        self._video_encoder: VideoEncoder | None = None
         # this will call init_vars():
         super().__init__(*args)
         self.scroll_min_percent: int = self.encoding_options.intget("scrolling.min-percent", SCROLL_MIN_PERCENT)
@@ -228,14 +230,12 @@ class WindowVideoSource(WindowSource):
         self.scroll_data = None
         self.last_scroll_time = 0.0
 
-        self._csc_encoder: ColorspaceConverter | None = None
-        self._video_encoder: VideoEncoder | None = None
         self._last_pipeline_check = 0
 
     def do_init_encoders(self) -> None:
+        if hasattr(self, "_encoders"):
+            self.cleanup_codecs()
         super().do_init_encoders()
-        self._csc_encoder = None
-        self._video_encoder = None
         self._last_pipeline_check = 0
 
         def add(enc, encode_fn) -> None:
@@ -373,24 +373,28 @@ class WindowVideoSource(WindowSource):
             (the encoder and csc module may be in use by that thread)
         """
         self.cancel_video_encoder_flush()
+        self.cancel_video_encoder_timer()
         self.video_context_clean()
 
     def video_context_clean(self) -> None:
-        """ Calls clean() from the encode thread """
-        csce = self._csc_encoder
-        ve = self._video_encoder
-        if csce or ve:
+        """Clear and close the video pipeline from the encode thread."""
+        def clean() -> None:
+            csce = self._csc_encoder
+            ve = self._video_encoder
+            if not (csce or ve):
+                return
             if DEBUG_VIDEO_CLEAN:
                 log.warn("video_context_clean() for wid %i: %s and %s", self.wid, csce, ve, backtrace=True)
             self._csc_encoder = None
             self._video_encoder = None
-
-            def clean() -> None:
-                if DEBUG_VIDEO_CLEAN:
-                    log.warn("video_context_clean() done")
+            try:
                 self.csc_clean(csce)
+            finally:
                 self.ve_clean(ve)
-            self.call_in_encode_thread(False, clean)
+            if DEBUG_VIDEO_CLEAN:
+                log.warn("video_context_clean() done")
+
+        self.call_in_encode_thread(False, clean)
 
     # noinspection PyMethodMayBeStatic
     def csc_clean(self, csce) -> None:
